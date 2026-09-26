@@ -16,7 +16,7 @@ namespace App.Pathfinding
         public Vector2 Origin { get; private set; }
         public int Width { get; private set; }
         public int Height { get; private set; }
-        public float NodeSize {  get; private set; }
+        public float NodeSize {  get; set; }
         public LayerMask ObstacleMask { get; private set; }
 
         public AstarGrid(Vector2 origin, int width, int height, float nodeSize, LayerMask obstacleMask)
@@ -33,7 +33,7 @@ namespace App.Pathfinding
                 for(int j = 0; j < height; j++)
                 {
                     Nodes[i, j] = new AstarNode(new Vector2Int(i, j), nodeSize);
-                    Vector2 nodeWorldPosition = GetWorldPosition(i, j);
+                    Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
                     Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, nodeSize / 2.0f, obstacleMask.value) == null;
                 }
             }
@@ -43,9 +43,9 @@ namespace App.Pathfinding
             _result = new List<Vector2>();
         }
 
-        public Vector2 GetWorldPosition(int x, int y)
+        public Vector2 GetWorldPositionCentre(int x, int y)
         {
-            return Origin + new Vector2(x * Height * NodeSize,-y * Width * NodeSize);
+            return Origin + new Vector2(x * Height * NodeSize/4.0f, -y * Width * NodeSize/4.0f);
         }
 
         public void GetXY(Vector2 position, out int x, out int y)
@@ -151,7 +151,7 @@ namespace App.Pathfinding
             AstarNode current = node;
             while (current != null)
             {
-                _result.Add(GetWorldPosition(current.PositionInGrid.x, current.PositionInGrid.y));
+                _result.Add(GetWorldPositionCentre(current.PositionInGrid.x, current.PositionInGrid.y));
                 current = current.Parent;
             }
 
