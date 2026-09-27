@@ -21,5 +21,22 @@ namespace App.Pathfinding
             Walkable = false;
             Size = size;
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is AstarNode node)
+            {
+                return PositionInGrid.x == node.PositionInGrid.x &&
+                       PositionInGrid.y == node.PositionInGrid.y &&
+                       Walkable == node.Walkable &&
+                       Size == node.Size;
+            }
+
+            return false;
+        }
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
     }
 }

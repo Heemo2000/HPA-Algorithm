@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -14,20 +15,25 @@ namespace App.Pathfinding
 
         public AstarNode[,] Nodes {  get; private set; }
         public Vector2 Origin { get; private set; }
-        public int Width { get; private set; }
-        public int Height { get; private set; }
+        public int Rows { get; private set; }
+        public int Columns { get; private set; }
         public float NodeSize {  get; set; }
         public LayerMask ObstacleMask { get; private set; }
+        public HashSet<EntranceEdge> Entrances { get; private set; }
+
+        
 
         public AstarGrid(Vector2 origin, int width, int height, float nodeSize, LayerMask obstacleMask)
         {
             Origin = origin;
-            Width = width;
-            Height = height;
+            Rows = width;
+            Columns = height;
             NodeSize = nodeSize;
             ObstacleMask = obstacleMask;
 
             Nodes = new AstarNode[width, height];
+            Entrances = new HashSet<EntranceEdge>();
+
             for(int i = 0; i < width; i++)
             {
                 for(int j = 0; j < height; j++)
@@ -45,15 +51,15 @@ namespace App.Pathfinding
 
         public Vector2 GetWorldPositionCentre(int x, int y)
         {
-            return Origin + new Vector2(x * Height * NodeSize/4.0f, -y * Width * NodeSize/4.0f);
+            return Origin + new Vector2(x * NodeSize/2.0f, -y * NodeSize/2.0f);
         }
 
         public void GetXY(Vector2 position, out int x, out int y)
         {
             Vector2Int gridPosition = new Vector2Int((int)(position.x - Origin.x), (int)(position.y - Origin.y));
             
-            gridPosition.x /= (Width * Mathf.CeilToInt(NodeSize));
-            gridPosition.y /= (Height * Mathf.CeilToInt(NodeSize));
+            gridPosition.x /= Mathf.CeilToInt(NodeSize);
+            gridPosition.y /= Mathf.CeilToInt(NodeSize);
 
             x = gridPosition.x;
             y = gridPosition.y;
@@ -117,9 +123,9 @@ namespace App.Pathfinding
 
         private void ClearCosts()
         {
-            for (int i = 0; i < Width; i++)
+            for (int i = 0; i < Rows; i++)
             {
-                for (int j = 0; j < Height; j++)
+                for (int j = 0; j < Columns; j++)
                 {
                     Nodes[i, j].GCost = 0;
                     Nodes[i, j].HCost = 0;
@@ -169,7 +175,11 @@ namespace App.Pathfinding
                     int estimatedNeighbourX = currentPosition.x + x;
                     int estimatedNeighbourY = currentPosition.y + y;
 
-                    if(estimatedNeighbourX < 0 || estimatedNeighbourX >= Width || estimatedNeighbourY < 0 || estimatedNeighbourY >= Height)
+                    if(x == 0 && y == 0)
+                    {
+                        continue;
+                    }
+                    else if(estimatedNeighbourX < 0 || estimatedNeighbourX >= Rows || estimatedNeighbourY < 0 || estimatedNeighbourY >= Columns)
                     {
                         continue;
                     }
@@ -183,10 +193,29 @@ namespace App.Pathfinding
 
         private int ManhattanDistance(AstarNode nodeA,  AstarNode nodeB)
         {
-            int dstX = Mathf.Abs(nodeA.PositionInGrid.x - nodeB.PositionInGrid.y);
+            int dstX = Mathf.Abs(nodeA.PositionInGrid.x - nodeB.PositionInGrid.x);
             int dstY = Mathf.Abs(nodeA.PositionInGrid.y - nodeB.PositionInGrid.y);
 
             return DiagonalCost * Mathf.Max(dstX, dstY) + StraightCost * Mathf.Abs(dstX - dstY);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is AstarGrid grid)
+            {
+                return Origin.x == grid.Origin.x &&
+                       Origin.y == grid.Origin.y &&
+                       Rows == grid.Rows &&
+                       Columns == grid.Columns &&
+                       NodeSize == grid.NodeSize;
+            }
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(Origin.x, Origin.y, Rows, Columns, NodeSize);
         }
     }
 }
