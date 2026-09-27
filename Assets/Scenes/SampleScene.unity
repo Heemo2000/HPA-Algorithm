@@ -369,7 +369,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 148b39d846c622946b821301bfba3395, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::App.HierarchialPathfindingManager
-  _chunkAmountX: 2
+  _chunkAmountX: 4
   _chunkAmountY: 2
   _eachChunkWidth: 4
   _eachChunkHeight: 4
