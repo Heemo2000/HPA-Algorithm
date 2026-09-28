@@ -377,7 +377,8 @@ MonoBehaviour:
   _obstacleMask:
     serializedVersion: 2
     m_Bits: 0
-  _fillSize: 1
+  _fillSize: 0.6
+  _minWalkabilityPercent: 0.5
 --- !u!4 &1466729742
 Transform:
   m_ObjectHideFlags: 0

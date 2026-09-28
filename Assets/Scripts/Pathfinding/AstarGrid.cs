@@ -13,6 +13,10 @@ namespace App.Pathfinding
         private List<AstarNode> _closeSet;
         private List<Vector2> _result;
 
+        private float _minWalkableResult;
+        private bool _walkable;
+
+        #region Node Related Properties
         public AstarNode[,] Nodes {  get; private set; }
         public Vector2 Origin { get; private set; }
         public int Rows { get; private set; }
@@ -21,22 +25,40 @@ namespace App.Pathfinding
         public LayerMask ObstacleMask { get; private set; }
         public HashSet<EntranceEdge> Entrances { get; private set; }
 
-        
+        #endregion
 
-        public AstarGrid(Vector2 origin, int width, int height, float nodeSize, LayerMask obstacleMask)
+        #region Outer Pathfinding Related Properties
+
+        public Vector2Int PositionInGrid { get; private set; }
+        public int GCost { get; set; }
+        public int HCost { get; set; }
+        public int FCost { get => GCost + HCost; }
+        public AstarGrid Parent { get; set; }
+        public float MinWalkablePercent { get => _minWalkableResult;
+                                          set
+                                          {
+                                              _minWalkableResult = value;
+                                              CheckWalkableStatus();
+                                          }
+                                         }
+        public bool Walkable { get => _walkable; }
+
+        #endregion
+
+        public AstarGrid(Vector2Int positionInGrid, Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask, float minWalkabilityPercent = 0.8f)
         {
             Origin = origin;
-            Rows = width;
-            Columns = height;
+            Rows = rows;
+            Columns = columns;
             NodeSize = nodeSize;
             ObstacleMask = obstacleMask;
 
-            Nodes = new AstarNode[width, height];
+            Nodes = new AstarNode[rows, columns];
             Entrances = new HashSet<EntranceEdge>();
 
-            for(int i = 0; i < width; i++)
+            for(int i = 0; i < rows; i++)
             {
-                for(int j = 0; j < height; j++)
+                for(int j = 0; j < columns; j++)
                 {
                     Nodes[i, j] = new AstarNode(new Vector2Int(i, j), nodeSize);
                     Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
@@ -47,6 +69,30 @@ namespace App.Pathfinding
             _openSet = new List<AstarNode>();
             _closeSet = new List<AstarNode>();
             _result = new List<Vector2>();
+
+            PositionInGrid = positionInGrid;
+            GCost = 0;
+            HCost = 0;
+            Parent = null;
+            _minWalkableResult = minWalkabilityPercent;
+            CheckWalkableStatus();
+        }
+
+        public void CheckWalkableStatus()
+        {
+            int walkableTiles = 0;
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Columns; j++)
+                {
+                    if(Nodes[i, j].Walkable)
+                    {
+                        walkableTiles++;
+                    }
+                }
+            }
+
+            _walkable = (float)walkableTiles /(float)(Rows * Columns) >= _minWalkableResult ? true : false;
         }
 
         public Vector2 GetWorldPositionCentre(int x, int y)
@@ -58,8 +104,8 @@ namespace App.Pathfinding
         {
             Vector2Int gridPosition = new Vector2Int((int)(position.x - Origin.x), (int)(position.y - Origin.y));
             
-            gridPosition.x /= Mathf.CeilToInt(NodeSize);
-            gridPosition.y /= Mathf.CeilToInt(NodeSize);
+            gridPosition.x /= Mathf.CeilToInt(NodeSize/2.0f);
+            gridPosition.y /= -Mathf.CeilToInt(NodeSize/2.0f);
 
             x = gridPosition.x;
             y = gridPosition.y;
@@ -73,7 +119,7 @@ namespace App.Pathfinding
                 return null;
             }
 
-            ClearCosts();
+            ClearCostsAndRemoveParent();
 
             _openSet.Clear();
             _closeSet.Clear();
@@ -121,7 +167,7 @@ namespace App.Pathfinding
             return null;
         }
 
-        private void ClearCosts()
+        private void ClearCostsAndRemoveParent()
         {
             for (int i = 0; i < Rows; i++)
             {
@@ -129,6 +175,7 @@ namespace App.Pathfinding
                 {
                     Nodes[i, j].GCost = 0;
                     Nodes[i, j].HCost = 0;
+                    Nodes[i, j].Parent = null;
                 }
             }
         }
