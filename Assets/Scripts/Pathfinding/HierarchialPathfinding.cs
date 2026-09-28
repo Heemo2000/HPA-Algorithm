@@ -28,7 +28,6 @@ namespace App.Pathfinding
             set
             {
                 _minWalkabilityPercent = value;
-                RecheckWalkabilityStatus();
             }
         }
         #endregion
@@ -54,8 +53,7 @@ namespace App.Pathfinding
                                       int eachChunkHeight,
                                       float nodeSize,
                                       float fillSize,
-                                      LayerMask obstacleLayerMask,
-                                      float minWalkabilityPercent = 0.8f)
+                                      LayerMask obstacleLayerMask)
         {
             RealOrigin = realOrigin;
             ChunkAmountX = chunkAmountX;
@@ -66,7 +64,7 @@ namespace App.Pathfinding
             FillSize = fillSize;
             ObstacleLayerMask = obstacleLayerMask;
 
-            Setup(minWalkabilityPercent);
+            Setup();
         }
 
         public void OnDrawGizmosSelected(bool isInPlayMode)
@@ -180,30 +178,8 @@ namespace App.Pathfinding
             }
         }
 
-        public List<OuterPathfindingData> FindOuterPath(Vector2 startPosition, Vector2 endPosition)
+        public List<EntranceEdge> FindOuterPath(Vector2 startPosition, Vector2 endPosition)
         {
-            if(!IsChunkWalkable(startPosition, 
-                                out int startGridPosX, 
-                                out int startGridPosY,
-                                out int startNodeGridPosX, 
-                                out int startNodeGridPosY) || 
-                                
-               !IsChunkWalkable(endPosition,
-                                out int endGridPosX,
-                                out int endGridPosY,
-                                out int endNodeGridPosX,
-                                out int endNodeGridPosY))
-            {
-                return null;
-            }
-
-            AstarGrid startGrid = _chunks[startGridPosX, startGridPosY];
-            AstarGrid endGrid = _chunks[endGridPosX, endGridPosY];
-
-            List<AstarGrid> openSet = new List<AstarGrid>();
-            List<AstarGrid> closeSet = new List<AstarGrid>();
-
-
 
             return null;
         }
@@ -228,7 +204,7 @@ namespace App.Pathfinding
             Gizmos.DrawLine(bottomLeft, topLeft);
         }
 
-        private void InitializeGrid(float minWalkabilityPercent = 0.8f)
+        private void InitializeGrid()
         {
             _chunks = new AstarGrid[ChunkAmountX, ChunkAmountY];
             
@@ -237,8 +213,7 @@ namespace App.Pathfinding
                 for (int j = 0; j < ChunkAmountY; j++)
                 {
                     Vector2 origin = RealOrigin + new Vector2(i * Mathf.CeilToInt(EachChunkWidth/2.0f) * NodeSize / 2.0f, -j * Mathf.CeilToInt(EachChunkHeight/2) * NodeSize / 2.0f);
-                    _chunks[i, j] = new AstarGrid(new Vector2Int(i,j), origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask);
-                    _chunks[i,j].MinWalkablePercent = minWalkabilityPercent;
+                    _chunks[i, j] = new AstarGrid(origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask);
                 }
             }
         }
@@ -452,9 +427,9 @@ namespace App.Pathfinding
 
             return false;
         }
-        private void Setup(float minWalkabilityPercent = 0.8f)
+        private void Setup()
         {
-            InitializeGrid(minWalkabilityPercent);
+            InitializeGrid();
             PopulateEntrances();
         }
         private int FindRandomWalkableNodeIndexY(AstarGrid chunk, AstarGrid other, int directionY)
@@ -556,44 +531,7 @@ namespace App.Pathfinding
             y = gridPosition.y;
         }
 
-        private void RecheckWalkabilityStatus()
-        {
-            for (int i = 0; i < ChunkAmountX; i++)
-            {
-                for (int j = 0; j < ChunkAmountY; j++)
-                {
-                    _chunks[i, j].MinWalkablePercent = _minWalkabilityPercent;
-                }
-            }
-        }
-
-        private bool IsChunkWalkable(Vector2 position, out int chunkGridPosX, out int chunkGridPosY, 
-                                     out int nodeGridPosX, out int nodeGridPosY)
-        {
-            GetChunkXY(position, out chunkGridPosX, out chunkGridPosY);
-
-            if (chunkGridPosX < 0 || chunkGridPosX >= ChunkAmountX || chunkGridPosY < 0 || chunkGridPosY >= ChunkAmountY)
-            {
-                nodeGridPosX = -1;
-                nodeGridPosY = -1;
-                return false;
-            }
-
-            AstarGrid chunk = _chunks[chunkGridPosX, chunkGridPosY];
-            if(!chunk.Walkable)
-            {
-                nodeGridPosX = -1;
-                nodeGridPosY = -1;
-                return false;
-            }
-            chunk.GetXY(position, out nodeGridPosX, out nodeGridPosY);
-            if (!chunk.Nodes[nodeGridPosX,nodeGridPosY].Walkable)
-            {
-                return false;
-            }
-
-            return true;
-        }
+        
         #endregion
     }
 }

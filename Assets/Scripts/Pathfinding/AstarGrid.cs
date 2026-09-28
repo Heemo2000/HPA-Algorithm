@@ -13,9 +13,6 @@ namespace App.Pathfinding
         private List<AstarNode> _closeSet;
         private List<Vector2> _result;
 
-        private float _minWalkableResult;
-        private bool _walkable;
-
         #region Node Related Properties
         public AstarNode[,] Nodes {  get; private set; }
         public Vector2 Origin { get; private set; }
@@ -27,25 +24,7 @@ namespace App.Pathfinding
 
         #endregion
 
-        #region Outer Pathfinding Related Properties
-
-        public Vector2Int PositionInGrid { get; private set; }
-        public int GCost { get; set; }
-        public int HCost { get; set; }
-        public int FCost { get => GCost + HCost; }
-        public AstarGrid Parent { get; set; }
-        public float MinWalkablePercent { get => _minWalkableResult;
-                                          set
-                                          {
-                                              _minWalkableResult = value;
-                                              CheckWalkableStatus();
-                                          }
-                                         }
-        public bool Walkable { get => _walkable; }
-
-        #endregion
-
-        public AstarGrid(Vector2Int positionInGrid, Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask, float minWalkabilityPercent = 0.8f)
+        public AstarGrid(Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask)
         {
             Origin = origin;
             Rows = rows;
@@ -69,30 +48,6 @@ namespace App.Pathfinding
             _openSet = new List<AstarNode>();
             _closeSet = new List<AstarNode>();
             _result = new List<Vector2>();
-
-            PositionInGrid = positionInGrid;
-            GCost = 0;
-            HCost = 0;
-            Parent = null;
-            _minWalkableResult = minWalkabilityPercent;
-            CheckWalkableStatus();
-        }
-
-        public void CheckWalkableStatus()
-        {
-            int walkableTiles = 0;
-            for (int i = 0; i < Rows; i++)
-            {
-                for (int j = 0; j < Columns; j++)
-                {
-                    if(Nodes[i, j].Walkable)
-                    {
-                        walkableTiles++;
-                    }
-                }
-            }
-
-            _walkable = (float)walkableTiles /(float)(Rows * Columns) >= _minWalkableResult ? true : false;
         }
 
         public Vector2 GetWorldPositionCentre(int x, int y)

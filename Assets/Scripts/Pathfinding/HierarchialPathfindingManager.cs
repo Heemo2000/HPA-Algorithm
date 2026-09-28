@@ -23,8 +23,6 @@ namespace App.Pathfinding
         [SerializeField] private LayerMask _obstacleMask;
         [Range(0.0f, 1.0f)]
         [SerializeField] private float _fillSize = 0.5f;
-        [Range(0.0f, 1.0f)]
-        [SerializeField] private float _minWalkabilityPercent = 0.5f;
 
         private HierarchialPathfinding _hierarchialPathfinding;
 
@@ -62,8 +60,6 @@ namespace App.Pathfinding
                         _hierarchialPathfinding.NodeSize = _nodeSize;
                         _hierarchialPathfinding.FillSize = _fillSize;
                         _hierarchialPathfinding.ObstacleLayerMask = _obstacleMask;
-                        _hierarchialPathfinding.MinWalkabilityPercent = _minWalkabilityPercent;
-
                     }
                 }
             }
