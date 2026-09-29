@@ -14,6 +14,8 @@ namespace App.Pathfinding
         [SerializeField] private int _chunkAmountX = 10;
         [Min(2)]
         [SerializeField] private int _chunkAmountY = 10;
+        [Range(0.0f, 1.0f)]
+        [SerializeField] private float _minWalkabilityPercent = 0.4f;
 
         [Header("Each Chunk Settings:")]
         [SerializeField] private int _eachChunkWidth = 10;
@@ -26,6 +28,7 @@ namespace App.Pathfinding
 
         private HierarchialPathfinding _hierarchialPathfinding;
 
+        
         // Start is called once before the first execution of Update after the MonoBehaviour is created
         void Start()
         {
@@ -36,7 +39,8 @@ namespace App.Pathfinding
                                                                  _eachChunkHeight, 
                                                                  _nodeSize, 
                                                                  _fillSize, 
-                                                                 _obstacleMask);
+                                                                 _obstacleMask, 
+                                                                 _minWalkabilityPercent);
         }
 
         private void OnDrawGizmosSelected()
@@ -60,9 +64,15 @@ namespace App.Pathfinding
                         _hierarchialPathfinding.NodeSize = _nodeSize;
                         _hierarchialPathfinding.FillSize = _fillSize;
                         _hierarchialPathfinding.ObstacleLayerMask = _obstacleMask;
+                        _hierarchialPathfinding.MinWalkabilityPercent = _minWalkabilityPercent;
                     }
                 }
             }
+        }
+
+        public List<Vector2> FindPath(Vector2 startPosition, Vector2 endPosition)
+        {
+            return _hierarchialPathfinding.FindPath(startPosition, endPosition);
         }
         
     }

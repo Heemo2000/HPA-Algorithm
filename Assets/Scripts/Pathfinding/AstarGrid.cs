@@ -12,6 +12,8 @@ namespace App.Pathfinding
         private List<AstarNode> _openSet;
         private List<AstarNode> _closeSet;
         private List<Vector2> _result;
+        private bool _walkable = false;
+        private float _minWalkabilityPercent;
 
         #region Node Related Properties
         public AstarNode[,] Nodes {  get; private set; }
@@ -25,7 +27,27 @@ namespace App.Pathfinding
 
         #endregion
 
-        public AstarGrid(Vector2Int positionInChunksGrid, Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask)
+        #region Outer Pathfinding Related Properties
+        public int GCost { get; set; }
+        public int HCost { get; set; }
+        public int FCost { get => GCost + HCost; }
+        public bool Walkable { get => _walkable; }
+        public float MinWalkabilityPercent { get => _minWalkabilityPercent; 
+                                             set
+                                             { 
+                                                _minWalkabilityPercent = value;
+                                                CheckForWalkableStatus();
+                                             } 
+                                           }
+        #endregion
+
+        public AstarGrid(Vector2Int positionInChunksGrid, 
+                         Vector2 origin, 
+                         int rows, 
+                         int columns, 
+                         float nodeSize, 
+                         LayerMask obstacleMask,
+                         float minWalkabilityPercent = 0.8f)
         {
             Origin = origin;
             Rows = rows;
@@ -50,6 +72,8 @@ namespace App.Pathfinding
             _openSet = new List<AstarNode>();
             _closeSet = new List<AstarNode>();
             _result = new List<Vector2>();
+            _walkable = false;
+            MinWalkabilityPercent = minWalkabilityPercent;
         }
 
         public Vector2 GetWorldPositionCentre(int x, int y)
@@ -201,6 +225,24 @@ namespace App.Pathfinding
             int dstY = Mathf.Abs(nodeA.PositionInGrid.y - nodeB.PositionInGrid.y);
 
             return DiagonalCost * Mathf.Max(dstX, dstY) + StraightCost * Mathf.Abs(dstX - dstY);
+        }
+
+        private void CheckForWalkableStatus()
+        {
+            int walkableCount = 0;
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Columns; j++)
+                {
+                    if (Nodes[i, j].Walkable)
+                    {
+                        walkableCount++;
+                    }
+                }
+            }
+
+            float walkabilityPercent = (float)(walkableCount) / (float)(Rows * Columns);
+            _walkable = walkabilityPercent >= _minWalkabilityPercent;
         }
 
         public override bool Equals(object obj)

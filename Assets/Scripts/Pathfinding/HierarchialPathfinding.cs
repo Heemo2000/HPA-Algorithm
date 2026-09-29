@@ -1,6 +1,4 @@
 using UnityEngine;
-using static UnityEngine.RuleTile.TilingRuleOutput;
-using NUnit.Framework;
 using System.Collections.Generic;
 
 
@@ -12,6 +10,7 @@ namespace App.Pathfinding
 {
     public class HierarchialPathfinding
     {
+        private static int DiagonalCost = 14;
         #region Properties
 
         public Vector2 RealOrigin { get; set; }
@@ -24,25 +23,28 @@ namespace App.Pathfinding
         public float FillSize { get; set; }
 
         public AstarGrid[,] Chunks { get => _chunks; private set => _chunks = value; }
+
         public float MinWalkabilityPercent { get => _minWalkabilityPercent;
-            set
-            {
-                _minWalkabilityPercent = value;
-            }
-        }
+                                             set
+                                             { 
+                                                _minWalkabilityPercent = value;
+                                                SetWalkabilityPercentForChunks();
+                                             }
+                                           }
+        
         #endregion
         #region Private Fields
         private AstarGrid[,] _chunks;
         private float _minWalkabilityPercent;
-
-#if UNITY_EDITOR
+        
+        #if UNITY_EDITOR
         private GUIStyle _fromGUIStyle = null;
         private Texture2D _fromGUIBGTex = null;
 
         private GUIStyle _toGUIStyle = null;
         private Texture2D _toGUIBGTex = null;
 
-#endif
+        #endif
         #endregion
 
         #region Public Methods and constructors
@@ -53,7 +55,8 @@ namespace App.Pathfinding
                                       int eachChunkHeight,
                                       float nodeSize,
                                       float fillSize,
-                                      LayerMask obstacleLayerMask)
+                                      LayerMask obstacleLayerMask,
+                                      float minWalkabilityPercent = 0.4f)
         {
             RealOrigin = realOrigin;
             ChunkAmountX = chunkAmountX;
@@ -63,8 +66,84 @@ namespace App.Pathfinding
             NodeSize = nodeSize;
             FillSize = fillSize;
             ObstacleLayerMask = obstacleLayerMask;
-
             Setup();
+            MinWalkabilityPercent = minWalkabilityPercent;
+        }
+
+        public List<Vector2> FindPath(Vector2 startPosition, Vector2 endPosition)
+        {
+            GetChunkXY(startPosition, out int startPositionX, out int startPositionY);
+            
+            if(startPositionX < 0 || startPositionY < 0 || 
+               startPositionX >= ChunkAmountX || startPositionY >= ChunkAmountY)
+            {
+                return null;
+            }
+
+            GetChunkXY(endPosition, out int endPositionX, out int endPositionY);
+            
+            if(endPositionX <  0 || endPositionY < 0 ||
+               endPositionX >= ChunkAmountX || endPositionY >= ChunkAmountY)
+            {
+                return null;
+            }
+
+
+            List<EntranceEdge> outerPath = FindOuterPath(_chunks[startPositionX, startPositionY],
+                                                         _chunks[endPositionX, endPositionY]);
+
+            //Add the edge for start position.
+            AstarGrid startGrid = _chunks[startPositionX, startPositionY];
+            startGrid.GetXY(startPosition, out int startNodeX, out int startNodeY);
+
+            EntranceEdge startingEdge = new EntranceEdge(null, null,
+                                           startGrid.Nodes[startNodeX, startNodeY],
+                                           startGrid);
+            
+            outerPath.Insert(0, startingEdge);
+            //outerPath[1].Parent = outerPath[0];
+
+            //Add the edge for end position.
+            AstarGrid endGrid = _chunks[endPositionX, endPositionY];
+            endGrid.GetXY(endPosition, out int endNodeX, out int endNodeY);
+
+            EntranceEdge endingEdge = new EntranceEdge(outerPath[outerPath.Count - 1].ToChunk,
+                                           endGrid.Nodes[endNodeX, endNodeY],
+                                           null,
+                                           null);
+            outerPath.Add(endingEdge);
+            //outerPath[outerPath.Count - 1].Parent = outerPath[outerPath.Count - 2].Parent;
+            
+
+            List<Vector2> result = new List<Vector2>();
+
+            for (int i = 0; i < outerPath.Count; i++)
+            {
+                EntranceEdge edge = outerPath[i];
+
+                AstarGrid chunk = null;
+                //If it's the starting edge
+                if(i == 0)
+                {
+                    chunk = edge.ToChunk;
+                    result.AddRange(chunk.FindPath(edge.To, outerPath[i + 1].From));
+                }
+                //If it's the ending edge
+                else if (i == outerPath.Count - 1)
+                {
+                    chunk = edge.FromChunk;
+                    result.AddRange(chunk.FindPath(outerPath[outerPath.Count - 1].To,
+                                                  edge.From));
+                }
+                else
+                {
+                    chunk = edge.ToChunk;
+
+                    result.AddRange(chunk.FindPath(edge.To,
+                                                   outerPath[i + 1].From));
+                }
+            }
+            return result;
         }
 
         public void OnDrawGizmosSelected(bool isInPlayMode)
@@ -178,44 +257,49 @@ namespace App.Pathfinding
             }
         }
 
-        public List<AstarNode> FindOuterPath(Vector2 startPosition, Vector2 endPosition)
+        private List<EntranceEdge> FindOuterPath(AstarGrid startChunk, AstarGrid endChunk)
         {
-            //Check startPosition for it's chunk index and grid position inside the chunk.
-            if(!IsChunkLeastWalkable(startPosition, out int startChunkX, out int startChunkY,
-                                                   out int startGridPosX, out int startGridPosY))
-            {
-                return null;
-            }
+            ClearChunkCostsAndEdgeParents();
 
-            //Now, check endPosition for it's chunk index and grid position inside the chunk
-            if(!IsChunkLeastWalkable(endPosition, out int endChunkX, out int endChunkY,
-                                                  out int  endGridPosX, out int endGridPosY))
-            {
-                return null;
-            }
+            List<OuterPathfindingPartData> openSet = new List<OuterPathfindingPartData>();
+            List<OuterPathfindingPartData> closeSet = new List<OuterPathfindingPartData>();
 
-            AstarGrid startChunk = _chunks[startChunkX, startChunkY];
-            AstarGrid endChunk = _chunks[endChunkX, endChunkY];
-            
-            AstarNode startNode = startChunk.Nodes[startGridPosX, startGridPosY];
-            AstarNode endNode = endChunk.Nodes[endGridPosX, endGridPosY];
-
-            if (startChunk != null && endChunk != null && startChunk == endChunk)
-            {
-                return new List<AstarNode> { startNode, endNode };
-            }
-            
-
-            List<AstarNode> openSet = new List<AstarNode>();
-            List<AstarNode> closeSet = new List<AstarNode>();
-
-            openSet.Add(startNode);
+            openSet.Add(new OuterPathfindingPartData(startChunk, null));
 
             while(openSet.Count > 0)
             {
+                OuterPathfindingPartData current = GetLeastCostPart(openSet);
                 
+                if(current.Chunk == endChunk)
+                {
+                    return RetracePath(current.Edge);
+                }
+                openSet.Remove(current);
+                closeSet.Add(current);
+                HashSet<EntranceEdge> neighbours = current.Chunk.Entrances;
+
+                foreach(EntranceEdge neighbour in neighbours)
+                {
+                    if(!neighbour.ToChunk.Walkable)
+                    {
+                        continue;
+                    }
+                    int newCostToNeighbour = current.Chunk.GCost + EuclideanHeuristic(current.Chunk, endChunk);
+
+                    bool isNeighbourExists = IsChunkExistsInOpenSet(openSet, neighbour.ToChunk);
+                    if (newCostToNeighbour < neighbour.ToChunk.GCost || !isNeighbourExists)
+                    {
+                        neighbour.ToChunk.GCost = newCostToNeighbour;
+                        neighbour.ToChunk.HCost = EuclideanHeuristic(neighbour.ToChunk, endChunk);
+                        neighbour.Parent = current.Edge;
+                        if(!isNeighbourExists)
+                        {
+                            openSet.Add(new OuterPathfindingPartData(neighbour.ToChunk, neighbour));
+                        }
+                    }
+                }
             }
-            
+
             return null;
         }
         #endregion
@@ -595,7 +679,88 @@ namespace App.Pathfinding
 
             return true;
         }
+
+        private List<EntranceEdge> RetracePath(EntranceEdge edge)
+        {
+            List<EntranceEdge> result = new List<EntranceEdge>();
+            EntranceEdge currentEdge = edge;
+            while(currentEdge != null)
+            {
+                result.Add(currentEdge);
+                currentEdge = currentEdge.Parent;
+            }
+
+            result.Reverse();
+            
+            return result;
+        }
+
+        private void ClearChunkCostsAndEdgeParents()
+        {
+            for (int i = 0; i < ChunkAmountX; i++)
+            {
+                for(int j = 0; j < ChunkAmountY; j++)
+                {
+                    _chunks[i, j].GCost = 0;
+                    _chunks[i, j].HCost = 0;
+                    foreach(EntranceEdge edge in _chunks[i,j].Entrances)
+                    {
+                        edge.Parent = null;
+                    }
+                }
+            }
+        }
+
+        private OuterPathfindingPartData GetLeastCostPart(List<OuterPathfindingPartData> openSet)
+        {
+            int leastCost = int.MaxValue;
+            OuterPathfindingPartData leastCostPart = openSet[0];
+            foreach(OuterPathfindingPartData part in openSet)
+            {
+                if(leastCost > part.Chunk.FCost || leastCost == part.Chunk.FCost)
+                {
+                    if(leastCost > part.Chunk.FCost)
+                    {
+                        leastCost = part.Chunk.FCost;
+                    }
+                    else
+                    {
+                        if(leastCost > part.Chunk.HCost)
+                        {
+                            leastCost = part.Chunk.HCost;
+                        }
+                    }
+
+                    leastCostPart = part;
+                }
+            }
+
+            return leastCostPart;
+        }
+
+        private int EuclideanHeuristic(AstarGrid chunkA, AstarGrid chunkB)
+        {
+            int dx = chunkB.PositionInChunksGrid.x - chunkA.PositionInChunksGrid.x;
+            int dy = chunkB.PositionInChunksGrid.y - chunkA.PositionInChunksGrid.y;
+
+            return DiagonalCost * Mathf.RoundToInt(Mathf.Sqrt(dx * dx + dy * dy));
+        }
         
+        private bool IsChunkExistsInOpenSet(List<OuterPathfindingPartData> openSet, AstarGrid chunkToFind)
+        {
+            return openSet.FindIndex((value) => value.Chunk == chunkToFind) != -1;
+        }
+
+        private void SetWalkabilityPercentForChunks()
+        {
+            for (int i = 0; i < ChunkAmountX; i++)
+            {
+                for (int j = 0; j < ChunkAmountY; j++)
+                {
+                    _chunks[i, j].MinWalkabilityPercent = _minWalkabilityPercent;
+                }
+            }
+        }
         #endregion
     }
 }
