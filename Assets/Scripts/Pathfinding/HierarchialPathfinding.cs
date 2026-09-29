@@ -178,9 +178,44 @@ namespace App.Pathfinding
             }
         }
 
-        public List<EntranceEdge> FindOuterPath(Vector2 startPosition, Vector2 endPosition)
+        public List<AstarNode> FindOuterPath(Vector2 startPosition, Vector2 endPosition)
         {
+            //Check startPosition for it's chunk index and grid position inside the chunk.
+            if(!IsChunkLeastWalkable(startPosition, out int startChunkX, out int startChunkY,
+                                                   out int startGridPosX, out int startGridPosY))
+            {
+                return null;
+            }
 
+            //Now, check endPosition for it's chunk index and grid position inside the chunk
+            if(!IsChunkLeastWalkable(endPosition, out int endChunkX, out int endChunkY,
+                                                  out int  endGridPosX, out int endGridPosY))
+            {
+                return null;
+            }
+
+            AstarGrid startChunk = _chunks[startChunkX, startChunkY];
+            AstarGrid endChunk = _chunks[endChunkX, endChunkY];
+            
+            AstarNode startNode = startChunk.Nodes[startGridPosX, startGridPosY];
+            AstarNode endNode = endChunk.Nodes[endGridPosX, endGridPosY];
+
+            if (startChunk != null && endChunk != null && startChunk == endChunk)
+            {
+                return new List<AstarNode> { startNode, endNode };
+            }
+            
+
+            List<AstarNode> openSet = new List<AstarNode>();
+            List<AstarNode> closeSet = new List<AstarNode>();
+
+            openSet.Add(startNode);
+
+            while(openSet.Count > 0)
+            {
+                
+            }
+            
             return null;
         }
         #endregion
@@ -213,7 +248,7 @@ namespace App.Pathfinding
                 for (int j = 0; j < ChunkAmountY; j++)
                 {
                     Vector2 origin = RealOrigin + new Vector2(i * Mathf.CeilToInt(EachChunkWidth/2.0f) * NodeSize / 2.0f, -j * Mathf.CeilToInt(EachChunkHeight/2) * NodeSize / 2.0f);
-                    _chunks[i, j] = new AstarGrid(origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask);
+                    _chunks[i, j] = new AstarGrid(new Vector2Int(i,j), origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask);
                 }
             }
         }
@@ -531,6 +566,35 @@ namespace App.Pathfinding
             y = gridPosition.y;
         }
 
+        private bool IsChunkLeastWalkable(Vector2 position, 
+                                          out int chunkX, 
+                                          out int chunkY,
+                                          out int inGridPosX,
+                                          out int inGridPosY)
+        {
+            chunkX = -1;
+            chunkY = -1;
+            inGridPosX = -1;
+            inGridPosY = -1;
+
+            GetChunkXY(position, out chunkX, out chunkY);
+            if (chunkX < 0 || chunkY < 0 || chunkX >= ChunkAmountX || chunkY >= ChunkAmountY)
+            {    
+                return false;
+            }
+
+            AstarGrid chunk = _chunks[chunkX, chunkY];
+            chunk.GetXY(position, out inGridPosX, out inGridPosY);
+
+            if (inGridPosX < 0 || inGridPosY < 0 ||
+               inGridPosX >= chunk.Rows || inGridPosY >= chunk.Columns ||
+               !chunk.Nodes[inGridPosX, inGridPosY].Walkable)
+            {
+                return false;
+            }
+
+            return true;
+        }
         
         #endregion
     }

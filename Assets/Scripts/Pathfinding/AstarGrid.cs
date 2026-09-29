@@ -15,6 +15,7 @@ namespace App.Pathfinding
 
         #region Node Related Properties
         public AstarNode[,] Nodes {  get; private set; }
+        public Vector2Int PositionInChunksGrid { get; private set; }
         public Vector2 Origin { get; private set; }
         public int Rows { get; private set; }
         public int Columns { get; private set; }
@@ -24,13 +25,14 @@ namespace App.Pathfinding
 
         #endregion
 
-        public AstarGrid(Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask)
+        public AstarGrid(Vector2Int positionInChunksGrid, Vector2 origin, int rows, int columns, float nodeSize, LayerMask obstacleMask)
         {
             Origin = origin;
             Rows = rows;
             Columns = columns;
             NodeSize = nodeSize;
             ObstacleMask = obstacleMask;
+            PositionInChunksGrid = positionInChunksGrid;
 
             Nodes = new AstarNode[rows, columns];
             Entrances = new HashSet<EntranceEdge>();
@@ -39,7 +41,7 @@ namespace App.Pathfinding
             {
                 for(int j = 0; j < columns; j++)
                 {
-                    Nodes[i, j] = new AstarNode(new Vector2Int(i, j), nodeSize);
+                    Nodes[i, j] = new AstarNode(new Vector2Int(i, j), positionInChunksGrid, nodeSize);
                     Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
                     Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, nodeSize / 2.0f, obstacleMask.value) == null;
                 }

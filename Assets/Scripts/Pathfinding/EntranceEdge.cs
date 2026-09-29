@@ -13,17 +13,37 @@ namespace App.Pathfinding
 
         public AstarNode To { get; set; }
 
+        public EntranceEdge Parent { get; set; }
+
         public EntranceEdge(AstarGrid chunk, AstarNode from, AstarNode to, AstarGrid toChunk)
         {
             this.FromChunk = chunk;
             this.From = from;
             this.To = to;
             ToChunk = toChunk;
+            Parent = null;
         }
 
         public override int GetHashCode()
         {
-            return HashCode.Combine(FromChunk.GetHashCode(), From.GetHashCode(), To.GetHashCode(), ToChunk.GetHashCode());
+            HashCode hash = new HashCode();
+            if(FromChunk != null)
+            {
+                hash.Add(FromChunk.GetHashCode());
+            }
+            if (ToChunk != null)
+            {
+                hash.Add(ToChunk.GetHashCode());
+            }
+            if (From != null)
+            {
+                hash.Add(From.GetHashCode());
+            }
+            if (To != null)
+            {
+                hash.Add(To.GetHashCode());
+            }
+            return hash.ToHashCode();
         }
 
         public override bool Equals(object obj)
