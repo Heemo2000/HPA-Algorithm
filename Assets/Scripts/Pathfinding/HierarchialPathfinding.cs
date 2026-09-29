@@ -153,63 +153,80 @@ namespace App.Pathfinding
             return result;
         }
 
-        public void OnDrawGizmosSelected(bool isInPlayMode)
+        public static void OnDrawGizmosSelectedStatic(int chunkAmountX,
+                                                      int chunkAmountY,
+                                                      int eachChunkWidth,
+                                                      int eachChunkHeight,
+                                                      float nodeSize,
+                                                      float fillSize,
+                                                      Vector2 realOrigin)
         {
-            Debug.Log("Is in play mode: " + isInPlayMode);
-            if (isInPlayMode)
+            for (int i = 0; i < chunkAmountX * chunkAmountY; i++)
             {
-                #if UNITY_EDITOR
+                int chunkX = i / chunkAmountY;
+                int chunkY = i % chunkAmountY;
+                
+                Vector2 chunkOrigin = realOrigin;
+                chunkOrigin += new Vector2(chunkX * eachChunkHeight * nodeSize / 2.0f, -chunkY * eachChunkHeight * nodeSize / 2.0f);
 
-                if (_fromGUIStyle == null)
+                for (int j = 0; j < eachChunkWidth * eachChunkHeight; j++)
                 {
-                    _fromGUIStyle = new GUIStyle();
-                    _fromGUIBGTex = new Texture2D(1, 1);
-                    _fromGUIBGTex.SetPixel(0, 0, Color.white);
-                    _fromGUIBGTex.Apply();
-                    _fromGUIStyle.normal.background = _fromGUIBGTex;
+                    int nodeIndexX = j / eachChunkHeight;
+                    int nodeIndexY = j % eachChunkHeight;
 
-                    _fromGUIStyle.alignment = TextAnchor.MiddleCenter;
-                    _fromGUIStyle.padding = new RectOffset(8, 8, 4, 4);
-                    _fromGUIStyle.margin = new RectOffset(0, 0, 0, 0);
+                    Vector2 origin = chunkOrigin + new Vector2(nodeIndexX * nodeSize / 2.0f, -nodeIndexY * nodeSize / 2.0f);
 
-                    _fromGUIStyle.fontSize = 10;
-                    _fromGUIStyle.fontStyle = FontStyle.Bold;
+                    DrawSquare(Color.white, origin, nodeSize, fillSize);
                 }
-
-                if (_toGUIStyle == null)
-                {
-                    _toGUIStyle = new GUIStyle();
-                    _toGUIBGTex = new Texture2D(1, 1);
-                    _toGUIBGTex.SetPixel(0, 0, Color.lightBlue);
-                    _toGUIBGTex.Apply();
-                    _toGUIStyle.normal.background = _toGUIBGTex;
-
-                    _toGUIStyle.alignment = TextAnchor.MiddleCenter;
-                    _toGUIStyle.padding = new RectOffset(8, 8, 4, 4);
-                    _toGUIStyle.margin = new RectOffset(0, 0, 0, 0);
-
-                    _toGUIStyle.fontSize = 10;
-                    _toGUIStyle.fontStyle = FontStyle.Bold;
-                }
-
-                #endif
             }
+        }
+
+        public void OnDrawGizmosSelected()
+        {
+
+            #if UNITY_EDITOR
+
+            if (_fromGUIStyle == null)
+            {
+                _fromGUIStyle = new GUIStyle();
+                _fromGUIBGTex = new Texture2D(1, 1);
+                _fromGUIBGTex.SetPixel(0, 0, Color.white);
+                _fromGUIBGTex.Apply();
+                _fromGUIStyle.normal.background = _fromGUIBGTex;
+
+                _fromGUIStyle.alignment = TextAnchor.MiddleCenter;
+                _fromGUIStyle.padding = new RectOffset(8, 8, 4, 4);
+                _fromGUIStyle.margin = new RectOffset(0, 0, 0, 0);
+
+                _fromGUIStyle.fontSize = 10;
+                _fromGUIStyle.fontStyle = FontStyle.Bold;
+            }
+
+            if (_toGUIStyle == null)
+            {
+                _toGUIStyle = new GUIStyle();
+                _toGUIBGTex = new Texture2D(1, 1);
+                _toGUIBGTex.SetPixel(0, 0, Color.lightBlue);
+                _toGUIBGTex.Apply();
+                _toGUIStyle.normal.background = _toGUIBGTex;
+
+                _toGUIStyle.alignment = TextAnchor.MiddleCenter;
+                _toGUIStyle.padding = new RectOffset(8, 8, 4, 4);
+                _toGUIStyle.margin = new RectOffset(0, 0, 0, 0);
+
+                _toGUIStyle.fontSize = 10;
+                _toGUIStyle.fontStyle = FontStyle.Bold;
+            }
+
+            #endif
             for (int i = 0; i < ChunkAmountX * ChunkAmountY; i++)
             {
                 int chunkX = i / ChunkAmountY;
                 int chunkY = i % ChunkAmountY;
 
-                Vector2 chunkOrigin = RealOrigin;
+                AstarGrid chunk = _chunks[chunkX, chunkY];
 
-                AstarGrid chunk = isInPlayMode ? _chunks[chunkX, chunkY] : null;
-                if (!isInPlayMode)
-                {
-                    chunkOrigin += new Vector2(chunkX * EachChunkHeight * NodeSize / 2.0f, -chunkY * EachChunkHeight * NodeSize / 2.0f);
-                }
-                else
-                {
-                    chunkOrigin = chunk.Origin;
-                }
+                Vector2 chunkOrigin = chunk.Origin;
 
                 Gizmos.color = Color.yellow;
                 Gizmos.DrawWireCube(chunkOrigin, Vector3.one * NodeSize/2.0f);
@@ -220,48 +237,31 @@ namespace App.Pathfinding
                     int nodeIndexY = j % EachChunkHeight;
 
                     Vector2 origin = Vector3.zero;
-                    if (isInPlayMode)
-                    {
-                        origin = chunk.GetWorldPositionCentre(nodeIndexX, nodeIndexY);
-                    }
-                    else
-                    {
-                        origin = chunkOrigin + new Vector2(nodeIndexX * NodeSize / 2.0f, -nodeIndexY * NodeSize / 2.0f);
-                    }
+                    origin = chunk.GetWorldPositionCentre(nodeIndexX, nodeIndexY);
 
-                    if (!isInPlayMode)
-                    {
-                        DrawSquare(Color.white, origin, NodeSize, FillSize);
-                    }
-                    else
-                    {
-                        DrawSquare(chunk.Nodes[nodeIndexX, nodeIndexY].Walkable ? Color.green : Color.white, origin, NodeSize, FillSize);
-                    }
+                    DrawSquare(chunk.Nodes[nodeIndexX, nodeIndexY].Walkable ? Color.green : Color.white, origin, NodeSize, FillSize);
                 }
 
-                if (isInPlayMode)
+                foreach (EntranceEdge edge in chunk.Entrances)
                 {
-                    foreach (EntranceEdge edge in chunk.Entrances)
-                    {
-                        AstarGrid fromChunk = edge.FromChunk;
-                        AstarNode from = edge.From;
-                        AstarNode to = edge.To;
-                        AstarGrid toChunk = edge.ToChunk;
+                    AstarGrid fromChunk = edge.FromChunk;
+                    AstarNode from = edge.From;
+                    AstarNode to = edge.To;
+                    AstarGrid toChunk = edge.ToChunk;
 
-                        Vector2 fromPosition = fromChunk.GetWorldPositionCentre(from.PositionInGrid.x, from.PositionInGrid.y);
-                        Vector2 toPosition = toChunk.GetWorldPositionCentre(to.PositionInGrid.x, to.PositionInGrid.y);
+                    Vector2 fromPosition = fromChunk.GetWorldPositionCentre(from.PositionInGrid.x, from.PositionInGrid.y);
+                    Vector2 toPosition = toChunk.GetWorldPositionCentre(to.PositionInGrid.x, to.PositionInGrid.y);
 
-                        Gizmos.color = Color.magenta;
-                        Gizmos.DrawLine(fromPosition, toPosition);
+                    Gizmos.color = Color.magenta;
+                    Gizmos.DrawLine(fromPosition, toPosition);
 
-                        #if UNITY_EDITOR
-                        Handles.Label(fromPosition, from.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _fromGUIStyle);
-                        #endif
+                    #if UNITY_EDITOR
+                    Handles.Label(fromPosition, from.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _fromGUIStyle);
+                    #endif
 
-                        #if UNITY_EDITOR
-                        Handles.Label(toPosition, to.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _toGUIStyle);
-                        #endif
-                    }
+                    #if UNITY_EDITOR
+                    Handles.Label(toPosition, to.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _toGUIStyle);
+                    #endif
                 }
 
             }
@@ -316,7 +316,7 @@ namespace App.Pathfinding
 
         #region Private Methods
         
-        private void DrawSquare(Color color, Vector2 origin, float size, float scale = 1.0f)
+        private static void DrawSquare(Color color, Vector2 origin, float size, float scale = 1.0f)
         {
             //I don't know right now why this works.
             float scaledSize = size * scale / 2.0f;

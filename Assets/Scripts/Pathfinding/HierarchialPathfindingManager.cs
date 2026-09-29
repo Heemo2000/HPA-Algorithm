@@ -48,7 +48,15 @@ namespace App.Pathfinding
             if (_hierarchialPathfinding != null)
             {
                 bool isInPlayMode = Application.isPlaying && _hierarchialPathfinding.Chunks != null;
-                _hierarchialPathfinding.OnDrawGizmosSelected(isInPlayMode);
+                _hierarchialPathfinding.OnDrawGizmosSelected();
+            }
+            else
+            {
+                HierarchialPathfinding.OnDrawGizmosSelectedStatic(_chunkAmountX, _chunkAmountY,
+                                                                  _eachChunkWidth, _eachChunkHeight,
+                                                                  _nodeSize,
+                                                                  _fillSize,
+                                                                  transform.position);
             }
         }
 
