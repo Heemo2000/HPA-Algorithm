@@ -87,14 +87,23 @@ namespace App.Pathfinding
             {
                 return null;
             }
+            
+            AstarGrid startGrid = _chunks[startPositionX, startPositionY];
+            AstarGrid endGrid = _chunks[endPositionX, endPositionY];
 
+            startGrid.GetXY(startPosition, out int startNodeX, out int startNodeY);
+            endGrid.GetXY(endPosition, out int endNodeX, out int endNodeY);
+
+            if ((startGrid != null && endGrid != null) && startGrid == endGrid)
+            {
+                return startGrid.FindPath(startGrid.Nodes[startNodeX, startNodeY], startGrid.Nodes[endNodeX, endNodeY]);
+            }
 
             List<EntranceEdge> outerPath = FindOuterPath(_chunks[startPositionX, startPositionY],
                                                          _chunks[endPositionX, endPositionY]);
 
             //Add the edge for start position.
-            AstarGrid startGrid = _chunks[startPositionX, startPositionY];
-            startGrid.GetXY(startPosition, out int startNodeX, out int startNodeY);
+            
 
             EntranceEdge startingEdge = new EntranceEdge(null, null,
                                            startGrid.Nodes[startNodeX, startNodeY],
@@ -104,8 +113,6 @@ namespace App.Pathfinding
             //outerPath[1].Parent = outerPath[0];
 
             //Add the edge for end position.
-            AstarGrid endGrid = _chunks[endPositionX, endPositionY];
-            endGrid.GetXY(endPosition, out int endNodeX, out int endNodeY);
 
             EntranceEdge endingEdge = new EntranceEdge(outerPath[outerPath.Count - 1].ToChunk,
                                            endGrid.Nodes[endNodeX, endNodeY],
@@ -148,9 +155,10 @@ namespace App.Pathfinding
 
         public void OnDrawGizmosSelected(bool isInPlayMode)
         {
+            Debug.Log("Is in play mode: " + isInPlayMode);
             if (isInPlayMode)
             {
-#if UNITY_EDITOR
+                #if UNITY_EDITOR
 
                 if (_fromGUIStyle == null)
                 {
@@ -184,7 +192,7 @@ namespace App.Pathfinding
                     _toGUIStyle.fontStyle = FontStyle.Bold;
                 }
 
-#endif
+                #endif
             }
             for (int i = 0; i < ChunkAmountX * ChunkAmountY; i++)
             {
@@ -200,23 +208,25 @@ namespace App.Pathfinding
                 }
                 else
                 {
-                    chunkOrigin += _chunks[chunkX, chunkY].Origin;
+                    chunkOrigin = chunk.Origin;
                 }
+
+                Gizmos.color = Color.yellow;
+                Gizmos.DrawWireCube(chunkOrigin, Vector3.one * NodeSize/2.0f);
 
                 for (int j = 0; j < EachChunkWidth * EachChunkHeight; j++)
                 {
                     int nodeIndexX = j / EachChunkHeight;
                     int nodeIndexY = j % EachChunkHeight;
 
-                    Vector2 origin = chunkOrigin;
+                    Vector2 origin = Vector3.zero;
                     if (isInPlayMode)
                     {
-                        origin += chunk.GetWorldPositionCentre(nodeIndexX, nodeIndexY);
+                        origin = chunk.GetWorldPositionCentre(nodeIndexX, nodeIndexY);
                     }
                     else
                     {
-                        origin += new Vector2(nodeIndexX * NodeSize / 2.0f, -nodeIndexY * NodeSize / 2.0f);
-                        //origin += new Vector2(_nodeSize/4.0f, -_nodeSize/4.0f);
+                        origin = chunkOrigin + new Vector2(nodeIndexX * NodeSize / 2.0f, -nodeIndexY * NodeSize / 2.0f);
                     }
 
                     if (!isInPlayMode)
@@ -238,19 +248,19 @@ namespace App.Pathfinding
                         AstarNode to = edge.To;
                         AstarGrid toChunk = edge.ToChunk;
 
-                        Vector2 fromPosition = fromChunk.Origin + fromChunk.GetWorldPositionCentre(from.PositionInGrid.x, from.PositionInGrid.y);
-                        Vector2 toPosition = toChunk.Origin + toChunk.GetWorldPositionCentre(to.PositionInGrid.x, to.PositionInGrid.y);
+                        Vector2 fromPosition = fromChunk.GetWorldPositionCentre(from.PositionInGrid.x, from.PositionInGrid.y);
+                        Vector2 toPosition = toChunk.GetWorldPositionCentre(to.PositionInGrid.x, to.PositionInGrid.y);
 
                         Gizmos.color = Color.magenta;
                         Gizmos.DrawLine(fromPosition, toPosition);
 
-#if UNITY_EDITOR
+                        #if UNITY_EDITOR
                         Handles.Label(fromPosition, from.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _fromGUIStyle);
-#endif
+                        #endif
 
-#if UNITY_EDITOR
+                        #if UNITY_EDITOR
                         Handles.Label(toPosition, to.PositionInGrid.ToString() + "\n" + to.PositionInGrid.ToString(), _toGUIStyle);
-#endif
+                        #endif
                     }
                 }
 
@@ -331,8 +341,9 @@ namespace App.Pathfinding
             {
                 for (int j = 0; j < ChunkAmountY; j++)
                 {
-                    Vector2 origin = RealOrigin + new Vector2(i * Mathf.CeilToInt(EachChunkWidth/2.0f) * NodeSize / 2.0f, -j * Mathf.CeilToInt(EachChunkHeight/2) * NodeSize / 2.0f);
-                    _chunks[i, j] = new AstarGrid(new Vector2Int(i,j), origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask);
+                    Vector2 origin = RealOrigin + new Vector2(i * EachChunkWidth * (NodeSize / 2.0f), -j * EachChunkHeight * (NodeSize / 2.0f));
+
+                    _chunks[i, j] = new AstarGrid(new Vector2Int(i,j), origin, EachChunkWidth, EachChunkHeight, NodeSize, ObstacleLayerMask, _minWalkabilityPercent);
                 }
             }
         }
@@ -643,8 +654,8 @@ namespace App.Pathfinding
         private void GetChunkXY(Vector2 worldPosition, out int x, out int y)
         {
             Vector2Int gridPosition = new Vector2Int(Mathf.CeilToInt(worldPosition.x - RealOrigin.x),  Mathf.CeilToInt(worldPosition.y - RealOrigin.y));
-            gridPosition.x /= (int)(Mathf.CeilToInt(EachChunkWidth / 2.0f) * NodeSize / 2.0f);
-            gridPosition.y /= -(int)(Mathf.CeilToInt(EachChunkHeight / 2.0f) * NodeSize / 2.0f);
+            gridPosition.x /= (int)(EachChunkWidth * NodeSize / 2.0f);
+            gridPosition.y /= -(int)(EachChunkHeight * NodeSize / 2.0f) ;
 
             x = gridPosition.x;
             y = gridPosition.y;
