@@ -1,7 +1,5 @@
 using UnityEngine;
 using System.Collections.Generic;
-using static UnityEngine.RuleTile.TilingRuleOutput;
-using UnityEditor.Experimental.GraphView;
 
 
 
@@ -135,7 +133,12 @@ namespace App.Pathfinding
             {
                 EntranceEdge edge = outerPath[i];
                 AstarGrid chunk = edge.ToChunk;
-                result.AddRange(chunk.FindPath(edge.To, outerPath[i + 1].From));
+                List<Vector2> path = chunk.FindPath(edge.To, outerPath[i + 1].From);
+                if(path == null)
+                {
+                    Debug.Log("Path is null for index " + i);
+                }
+                result.AddRange(path);
             }
 
 
@@ -263,6 +266,7 @@ namespace App.Pathfinding
         private List<EntranceEdge> FindOuterPath(AstarGrid startChunk, AstarGrid endChunk)
         {
             SetWalkabilityPercentForChunks();
+            PopulateEntrances();
 
             if (!startChunk.Walkable || !endChunk.Walkable)
             {
@@ -372,8 +376,11 @@ namespace App.Pathfinding
                     if (y - 1 >= 0 && !IsDiagonalEntranceExists(x-1, y-1, -1, 1))
                     {
                         AstarGrid topLeftChunk = _chunks[x-1, y-1];
-                        _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk, currentChunk.Nodes[0, 0], topLeftChunk.Nodes[topLeftChunk.Rows - 1, topLeftChunk.Columns - 1], topLeftChunk));
-                        _chunks[x - 1, y - 1].Entrances.Add(new EntranceEdge(topLeftChunk, topLeftChunk.Nodes[topLeftChunk.Rows - 1, topLeftChunk.Columns - 1], currentChunk.Nodes[0, 0], currentChunk));
+                        if (currentChunk.Nodes[0,0].Walkable && topLeftChunk.Nodes[topLeftChunk.Rows - 1, topLeftChunk.Columns - 1].Walkable)
+                        {
+                            _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk, currentChunk.Nodes[0, 0], topLeftChunk.Nodes[topLeftChunk.Rows - 1, topLeftChunk.Columns - 1], topLeftChunk));
+                            _chunks[x - 1, y - 1].Entrances.Add(new EntranceEdge(topLeftChunk, topLeftChunk.Nodes[topLeftChunk.Rows - 1, topLeftChunk.Columns - 1], currentChunk.Nodes[0, 0], currentChunk));
+                        }
                     }
                     Debug.Log($"There exists a top chunk for chunk at {x},{y}");
                     
@@ -393,15 +400,18 @@ namespace App.Pathfinding
                     if (y + 1 < ChunkAmountY && !IsDiagonalEntranceExists(x - 1, y + 1, -1, -1))
                     {
                         AstarGrid topRightChunk = _chunks[x - 1, y + 1];
-                        _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk, 
-                                                                     currentChunk.Nodes[0, currentChunk.Columns - 1], 
-                                                                     topRightChunk.Nodes[topRightChunk.Rows - 1, topRightChunk.Columns - 1], 
+                        if (currentChunk.Nodes[0, currentChunk.Columns - 1].Walkable && topRightChunk.Nodes[topRightChunk.Rows - 1, topRightChunk.Columns - 1].Walkable)
+                        {
+                            _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk,
+                                                                     currentChunk.Nodes[0, currentChunk.Columns - 1],
+                                                                     topRightChunk.Nodes[topRightChunk.Rows - 1, topRightChunk.Columns - 1],
                                                                      topRightChunk));
 
-                        _chunks[x - 1, y + 1].Entrances.Add(new EntranceEdge(topRightChunk, 
-                                                                             topRightChunk.Nodes[topRightChunk.Rows - 1, topRightChunk.Columns - 1],
-                                                                             currentChunk.Nodes[0, currentChunk.Columns - 1], 
-                                                                             currentChunk));
+                            _chunks[x - 1, y + 1].Entrances.Add(new EntranceEdge(topRightChunk,
+                                                                                 topRightChunk.Nodes[topRightChunk.Rows - 1, topRightChunk.Columns - 1],
+                                                                                 currentChunk.Nodes[0, currentChunk.Columns - 1],
+                                                                                 currentChunk));
+                        }
                     }
                 }
 
@@ -428,15 +438,18 @@ namespace App.Pathfinding
                     if(y - 1 >= 0 && !IsDiagonalEntranceExists(x+1, y - 1, 1, 1))
                     {
                         AstarGrid bottomLeftChunk = _chunks[x + 1, y - 1];
-                        _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk,
+                        if(currentChunk.Nodes[currentChunk.Rows - 1, 0].Walkable && bottomLeftChunk.Nodes[0, bottomLeftChunk.Columns - 1].Walkable)
+                        {
+                            _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk,
                                                                     currentChunk.Nodes[currentChunk.Rows - 1, 0],
                                                                     bottomLeftChunk.Nodes[0, bottomLeftChunk.Columns - 1],
                                                                     bottomLeftChunk));
 
-                        _chunks[x + 1, y - 1].Entrances.Add(new EntranceEdge(bottomLeftChunk,
-                                                                             bottomLeftChunk.Nodes[0, bottomLeftChunk.Columns - 1],
-                                                                             currentChunk.Nodes[currentChunk.Rows - 1, 0],
-                                                                             currentChunk));
+                            _chunks[x + 1, y - 1].Entrances.Add(new EntranceEdge(bottomLeftChunk,
+                                                                                 bottomLeftChunk.Nodes[0, bottomLeftChunk.Columns - 1],
+                                                                                 currentChunk.Nodes[currentChunk.Rows - 1, 0],
+                                                                                 currentChunk));
+                        }
                     }
 
                     Debug.Log($"There exists a bottom chunk for chunk at {x},{y}");
@@ -458,15 +471,18 @@ namespace App.Pathfinding
                     if(y + 1 < ChunkAmountY && !IsDiagonalEntranceExists(x + 1, y + 1, -1, -1))
                     {
                         AstarGrid bottomRightChunk = _chunks[x + 1, y + 1];
-                        _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk,
+                        if(currentChunk.Nodes[currentChunk.Rows - 1, currentChunk.Columns - 1].Walkable && bottomRightChunk.Nodes[0, 0].Walkable)
+                        {
+                            _chunks[x, y].Entrances.Add(new EntranceEdge(currentChunk,
                                                                     currentChunk.Nodes[currentChunk.Rows - 1, currentChunk.Columns - 1],
                                                                     bottomRightChunk.Nodes[0, 0],
                                                                     bottomRightChunk));
 
-                        _chunks[x + 1, y + 1].Entrances.Add(new EntranceEdge(bottomRightChunk,
-                                                                             bottomRightChunk.Nodes[0, 0],
-                                                                             currentChunk.Nodes[currentChunk.Rows - 1, currentChunk.Columns - 1],
-                                                                             currentChunk));
+                            _chunks[x + 1, y + 1].Entrances.Add(new EntranceEdge(bottomRightChunk,
+                                                                                 bottomRightChunk.Nodes[0, 0],
+                                                                                 currentChunk.Nodes[currentChunk.Rows - 1, currentChunk.Columns - 1],
+                                                                                 currentChunk));
+                        }
                     }
                 }
                 
@@ -566,6 +582,7 @@ namespace App.Pathfinding
         {
             int randomIndexY = 0;
             int maxTries = chunk.Columns;
+            List<int> visitedIndices = new List<int>();
             switch (directionY)
             {
                 //Top
@@ -577,7 +594,11 @@ namespace App.Pathfinding
                            maxTries > 0)
                     {
                         randomIndexY = Random.Range(0, chunk.Columns);
-                        maxTries--;
+                        if(!visitedIndices.Contains(randomIndexY))
+                        {
+                            visitedIndices.Add(randomIndexY);
+                            maxTries--;
+                        }
                     }
 
                     if (maxTries <= 0)
@@ -594,7 +615,11 @@ namespace App.Pathfinding
                            && maxTries > 0)
                     {
                         randomIndexY = Random.Range(0, chunk.Columns);
-                        maxTries--;
+                        if (!visitedIndices.Contains(randomIndexY))
+                        {
+                            visitedIndices.Add(randomIndexY);
+                            maxTries--;
+                        }
                     }
 
                     if (maxTries <= 0)
@@ -612,6 +637,8 @@ namespace App.Pathfinding
         {
             int randomIndexX = 0;
             int maxTries = chunk.Rows;
+            List<int> visitedIndices = new List<int>();
+
             switch (directionX)
             {
                 //Right
@@ -623,7 +650,12 @@ namespace App.Pathfinding
                             maxTries > 0)
                     {
                         randomIndexX = Random.Range(0, chunk.Rows);
-                        maxTries--;
+                        if(!visitedIndices.Contains(randomIndexX))
+                        {
+                            visitedIndices.Add(randomIndexX);
+                            maxTries--;
+                        }
+                        
                     }
 
                     if (maxTries <= 0)
