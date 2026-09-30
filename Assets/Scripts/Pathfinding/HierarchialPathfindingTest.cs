@@ -69,21 +69,26 @@ namespace App.Pathfinding
 
         private void OnDrawGizmosSelected()
         {
-            Gizmos.color = Color.yellowGreen;
-            if(_path != null)
+            
+            if(_path == null)
             {
-                if(_path.Count == 2)
+                return;
+            }
+
+            Gizmos.color = Color.yellowGreen;
+            if (_path.Count == 2)
+            {
+                Gizmos.DrawLine(_path[0], _path[1]);
+            }
+            else
+            {
+                for (int i = 1; i < _path.Count - 1; i++)
                 {
-                    Gizmos.DrawLine(_path[0], _path[1]);
+                    Gizmos.DrawLine(_path[i - 1], _path[i]);
+                    Gizmos.DrawLine(_path[i], _path[i + 1]);
                 }
-                else
-                {
-                    for (int i = 1; i < _path.Count - 1; i++)
-                    {
-                        Gizmos.DrawLine(_path[i - 1], _path[i]);
-                        Gizmos.DrawLine(_path[i], _path[i + 1]);
-                    }
-                }
+                
+                //Gizmos.DrawLine(_path[_path.Count - 2], _path[_path.Count - 1]);
             }
         }
     }

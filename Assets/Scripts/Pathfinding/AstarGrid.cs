@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Unity.VisualScripting;
 using UnityEngine;
 
 namespace App.Pathfinding
@@ -64,7 +65,7 @@ namespace App.Pathfinding
                 {
                     Nodes[i, j] = new AstarNode(new Vector2Int(i, j), positionInChunksGrid, nodeSize);
                     Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
-                    Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, nodeSize / 2.0f, obstacleMask.value) == null;
+                    Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, nodeSize / 4.0f, obstacleMask.value) == null;
                 }
             }
 
@@ -84,8 +85,8 @@ namespace App.Pathfinding
             Vector2 local = position - Origin;
             float spacing = NodeSize / 2.0f;
 
-            x = (int)(local.x / spacing);
-            y = (int)(-local.y / spacing);
+            x = Mathf.RoundToInt(local.x / spacing);
+            y = Mathf.RoundToInt(-local.y / spacing);
             
 
         }
@@ -96,6 +97,10 @@ namespace App.Pathfinding
             if(!startNode.Walkable || !endNode.Walkable)
             {
                 return null;
+            }
+            else if(startNode == endNode)
+            {
+                return new List<Vector2>() { GetWorldPositionCentre(startNode.PositionInGrid.x, startNode.PositionInGrid.y )};
             }
 
             Scan();
@@ -154,7 +159,7 @@ namespace App.Pathfinding
                 for (int j = 0; j < Columns; j++)
                 {
                     Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
-                    Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, NodeSize / 2.0f, ObstacleMask.value) == null;
+                    Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, NodeSize / 4.0f, ObstacleMask.value) == null;
                 }
             }
         }

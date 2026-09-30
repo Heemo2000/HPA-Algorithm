@@ -125,7 +125,6 @@ namespace App.Pathfinding
                                            null,
                                            null);
             outerPath.Add(endingEdge);
-            //outerPath[outerPath.Count - 1].Parent = outerPath[outerPath.Count - 2].Parent;
 
             List<Vector2> result = new List<Vector2>();
 
