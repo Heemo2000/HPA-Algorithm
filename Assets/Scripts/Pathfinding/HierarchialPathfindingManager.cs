@@ -43,20 +43,23 @@ namespace App.Pathfinding
                                                                  _minWalkabilityPercent);
         }
 
-        private void OnDrawGizmosSelected()
+        private void OnDrawGizmos()
         {
-            if (_hierarchialPathfinding != null)
-            {
-                bool isInPlayMode = Application.isPlaying && _hierarchialPathfinding.Chunks != null;
-                _hierarchialPathfinding.OnDrawGizmosSelected();
-            }
-            else
+            if(!Application.isPlaying)
             {
                 HierarchialPathfinding.OnDrawGizmosSelectedStatic(_chunkAmountX, _chunkAmountY,
                                                                   _eachChunkWidth, _eachChunkHeight,
                                                                   _nodeSize,
                                                                   _fillSize,
                                                                   transform.position);
+            }
+        }
+        private void OnDrawGizmosSelected()
+        {
+            if (_hierarchialPathfinding != null)
+            {
+                bool isInPlayMode = Application.isPlaying && _hierarchialPathfinding.Chunks != null;
+                _hierarchialPathfinding.OnDrawGizmosSelected();
             }
         }
 

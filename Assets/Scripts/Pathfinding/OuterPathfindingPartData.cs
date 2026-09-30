@@ -18,7 +18,20 @@ namespace App.Pathfinding
         {
             if(other == null) return false;
 
-            return Chunk.Equals(other.Chunk) && Edge.Equals(other.Edge);
+            if (Chunk != null && Edge != null)
+            {
+                return Chunk.Equals(other.Chunk) && Edge.Equals(other.Edge);
+            }
+            else if (Chunk != null && Edge == null)
+            {
+                return Chunk.Equals(other.Chunk);
+            }
+            else if (Chunk == null && Edge != null)
+            {
+                return Edge.Equals(other.Edge);
+            }
+
+            return false;
         }
 
         public override int GetHashCode()

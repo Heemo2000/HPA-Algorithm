@@ -11,7 +11,6 @@ namespace App.Pathfinding
 
         private List<AstarNode> _openSet;
         private List<AstarNode> _closeSet;
-        private List<Vector2> _result;
         private bool _walkable = false;
         private float _minWalkabilityPercent;
 
@@ -71,7 +70,6 @@ namespace App.Pathfinding
 
             _openSet = new List<AstarNode>();
             _closeSet = new List<AstarNode>();
-            _result = new List<Vector2>();
             _walkable = false;
             MinWalkabilityPercent = minWalkabilityPercent;
         }
@@ -83,13 +81,13 @@ namespace App.Pathfinding
 
         public void GetXY(Vector2 position, out int x, out int y)
         {
-            Vector2Int gridPosition = new Vector2Int((int)(position.x - Origin.x), (int)(position.y - Origin.y));
-            
-            gridPosition.x /= Mathf.CeilToInt(NodeSize/2.0f);
-            gridPosition.y /= -Mathf.CeilToInt(NodeSize/2.0f);
+            Vector2 local = position - Origin;
+            float spacing = NodeSize / 2.0f;
 
-            x = gridPosition.x;
-            y = gridPosition.y;
+            x = (int)(local.x / spacing);
+            y = (int)(-local.y / spacing);
+            
+
         }
 
         public List<Vector2> FindPath(AstarNode startNode, AstarNode endNode)
@@ -100,6 +98,7 @@ namespace App.Pathfinding
                 return null;
             }
 
+            Scan();
             ClearCostsAndRemoveParent();
 
             _openSet.Clear();
@@ -128,7 +127,7 @@ namespace App.Pathfinding
                         continue;
                     }
 
-                    int newCostToNeighbour = leastNode.GCost + ManhattanDistance(leastNode, endNode);
+                    int newCostToNeighbour = leastNode.GCost + ManhattanDistance(leastNode, neighbour);
 
                     if(newCostToNeighbour < neighbour.GCost || !_openSet.Contains(neighbour))
                     {
@@ -146,6 +145,18 @@ namespace App.Pathfinding
             }
 
             return null;
+        }
+
+        private void Scan()
+        {
+            for (int i = 0; i < Rows; i++)
+            {
+                for (int j = 0; j < Columns; j++)
+                {
+                    Vector2 nodeWorldPosition = GetWorldPositionCentre(i, j);
+                    Nodes[i, j].Walkable = Physics2D.OverlapCircle(nodeWorldPosition, NodeSize / 2.0f, ObstacleMask.value) == null;
+                }
+            }
         }
 
         private void ClearCostsAndRemoveParent()
@@ -168,9 +179,21 @@ namespace App.Pathfinding
 
             foreach (AstarNode node in openSet)
             {
-                if(lowestCost > node.FCost)
+                if(lowestCost > node.FCost || lowestCost == node.FCost)
                 {
-                    lowestCost = node.FCost;
+                    if(lowestCost > node.FCost)
+                    {
+                        lowestCost = node.FCost;
+                    }
+                    else
+                    {
+                        if(lowestCost > node.HCost)
+                        {
+                            lowestCost = node.HCost;
+                        }
+                    }
+                    
+                        
                     leastCostNode = node;
                 }
             }
@@ -180,16 +203,18 @@ namespace App.Pathfinding
 
         private List<Vector2> RetracePath(AstarNode node)
         {
-            _result.Clear();
+            List<Vector2> result = new List<Vector2>();
 
             AstarNode current = node;
             while (current != null)
             {
-                _result.Add(GetWorldPositionCentre(current.PositionInGrid.x, current.PositionInGrid.y));
+                result.Add(GetWorldPositionCentre(current.PositionInGrid.x, current.PositionInGrid.y));
                 current = current.Parent;
             }
 
-            return _result;
+            result.Reverse();
+
+            return result;
         }
 
         private List<AstarNode> GetNeighbours(AstarNode currentNode)
@@ -224,7 +249,7 @@ namespace App.Pathfinding
             int dstX = Mathf.Abs(nodeA.PositionInGrid.x - nodeB.PositionInGrid.x);
             int dstY = Mathf.Abs(nodeA.PositionInGrid.y - nodeB.PositionInGrid.y);
 
-            return DiagonalCost * Mathf.Max(dstX, dstY) + StraightCost * Mathf.Abs(dstX - dstY);
+            return DiagonalCost * Mathf.Min(dstX, dstY) + StraightCost * Mathf.Abs(dstX - dstY);
         }
 
         private void CheckForWalkableStatus()
@@ -242,7 +267,9 @@ namespace App.Pathfinding
             }
 
             float walkabilityPercent = (float)(walkableCount) / (float)(Rows * Columns);
+            Debug.Log($"Walkability Percent for chunk {PositionInChunksGrid} is {walkabilityPercent}");
             _walkable = walkabilityPercent >= _minWalkabilityPercent;
+            Debug.Log($"Is chunk at {PositionInChunksGrid} is walkable ? {_walkable}");
         }
 
         public override bool Equals(object obj)

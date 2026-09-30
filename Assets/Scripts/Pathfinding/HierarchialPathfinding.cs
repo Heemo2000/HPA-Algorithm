@@ -1,5 +1,9 @@
 using UnityEngine;
 using System.Collections.Generic;
+using static UnityEngine.RuleTile.TilingRuleOutput;
+using UnityEditor.Experimental.GraphView;
+
+
 
 
 
@@ -102,6 +106,11 @@ namespace App.Pathfinding
             List<EntranceEdge> outerPath = FindOuterPath(_chunks[startPositionX, startPositionY],
                                                          _chunks[endPositionX, endPositionY]);
 
+            if(outerPath == null)
+            {
+                return null;
+            }
+
             //Add the edge for start position.
             
 
@@ -110,46 +119,30 @@ namespace App.Pathfinding
                                            startGrid);
             
             outerPath.Insert(0, startingEdge);
-            //outerPath[1].Parent = outerPath[0];
 
             //Add the edge for end position.
 
-            EntranceEdge endingEdge = new EntranceEdge(outerPath[outerPath.Count - 1].ToChunk,
+            EntranceEdge endingEdge = new EntranceEdge(endGrid,
                                            endGrid.Nodes[endNodeX, endNodeY],
                                            null,
                                            null);
             outerPath.Add(endingEdge);
             //outerPath[outerPath.Count - 1].Parent = outerPath[outerPath.Count - 2].Parent;
-            
 
             List<Vector2> result = new List<Vector2>();
 
-            for (int i = 0; i < outerPath.Count; i++)
+            for (int i = 0; i < outerPath.Count - 1; i++)
             {
                 EntranceEdge edge = outerPath[i];
-
-                AstarGrid chunk = null;
-                //If it's the starting edge
-                if(i == 0)
-                {
-                    chunk = edge.ToChunk;
-                    result.AddRange(chunk.FindPath(edge.To, outerPath[i + 1].From));
-                }
-                //If it's the ending edge
-                else if (i == outerPath.Count - 1)
-                {
-                    chunk = edge.FromChunk;
-                    result.AddRange(chunk.FindPath(outerPath[outerPath.Count - 1].To,
-                                                  edge.From));
-                }
-                else
-                {
-                    chunk = edge.ToChunk;
-
-                    result.AddRange(chunk.FindPath(edge.To,
-                                                   outerPath[i + 1].From));
-                }
+                AstarGrid chunk = edge.ToChunk;
+                result.AddRange(chunk.FindPath(edge.To, outerPath[i + 1].From));
             }
+
+
+
+            outerPath[outerPath.Count - 1].Parent = null;
+            outerPath[1].Parent = null;
+
             return result;
         }
 
@@ -239,7 +232,7 @@ namespace App.Pathfinding
                     Vector2 origin = Vector3.zero;
                     origin = chunk.GetWorldPositionCentre(nodeIndexX, nodeIndexY);
 
-                    DrawSquare(chunk.Nodes[nodeIndexX, nodeIndexY].Walkable ? Color.green : Color.white, origin, NodeSize, FillSize);
+                    DrawSquare(chunk.Nodes[nodeIndexX, nodeIndexY].Walkable ? Color.green : Color.red, origin, NodeSize, FillSize);
                 }
 
                 foreach (EntranceEdge edge in chunk.Entrances)
@@ -269,6 +262,13 @@ namespace App.Pathfinding
 
         private List<EntranceEdge> FindOuterPath(AstarGrid startChunk, AstarGrid endChunk)
         {
+            SetWalkabilityPercentForChunks();
+
+            if (!startChunk.Walkable || !endChunk.Walkable)
+            {
+                return null;
+            }
+
             ClearChunkCostsAndEdgeParents();
 
             List<OuterPathfindingPartData> openSet = new List<OuterPathfindingPartData>();
@@ -290,11 +290,11 @@ namespace App.Pathfinding
 
                 foreach(EntranceEdge neighbour in neighbours)
                 {
-                    if(!neighbour.ToChunk.Walkable)
+                    if(!neighbour.ToChunk.Walkable || IsChunkExistsInCloseSet(closeSet, neighbour.ToChunk))
                     {
                         continue;
                     }
-                    int newCostToNeighbour = current.Chunk.GCost + EuclideanHeuristic(current.Chunk, endChunk);
+                    int newCostToNeighbour = current.Chunk.GCost + EuclideanHeuristic(current.Chunk, neighbour.ToChunk);
 
                     bool isNeighbourExists = IsChunkExistsInOpenSet(openSet, neighbour.ToChunk);
                     if (newCostToNeighbour < neighbour.ToChunk.GCost || !isNeighbourExists)
@@ -653,12 +653,12 @@ namespace App.Pathfinding
         
         private void GetChunkXY(Vector2 worldPosition, out int x, out int y)
         {
-            Vector2Int gridPosition = new Vector2Int(Mathf.CeilToInt(worldPosition.x - RealOrigin.x),  Mathf.CeilToInt(worldPosition.y - RealOrigin.y));
-            gridPosition.x /= (int)(EachChunkWidth * NodeSize / 2.0f);
-            gridPosition.y /= -(int)(EachChunkHeight * NodeSize / 2.0f) ;
+            Vector2 local = worldPosition - RealOrigin;
+            float spacingX = EachChunkWidth *  NodeSize / 2.0f;
+            float spacingY = -EachChunkHeight * NodeSize / 2.0f;
 
-            x = gridPosition.x;
-            y = gridPosition.y;
+            x = Mathf.FloorToInt(local.x / spacingX);
+            y = Mathf.FloorToInt(local.y / spacingY);
         }
 
         private bool IsChunkLeastWalkable(Vector2 position, 
@@ -762,6 +762,11 @@ namespace App.Pathfinding
             return openSet.FindIndex((value) => value.Chunk == chunkToFind) != -1;
         }
 
+        private bool IsChunkExistsInCloseSet(List<OuterPathfindingPartData> closeSet, AstarGrid chunkToFind)
+        {
+            return closeSet.FindIndex((value) => value.Chunk == chunkToFind) != -1;
+        }
+        
         private void SetWalkabilityPercentForChunks()
         {
             for (int i = 0; i < ChunkAmountX; i++)
