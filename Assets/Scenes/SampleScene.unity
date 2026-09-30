@@ -449,7 +449,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!50 &1350361315
 Rigidbody2D:
   serializedVersion: 5
@@ -683,7 +683,7 @@ MonoBehaviour:
   _obstacleMask:
     serializedVersion: 2
     m_Bits: 64
-  _fillSize: 1
+  _fillSize: 0.9
 --- !u!4 &1466729742
 Transform:
   m_ObjectHideFlags: 0
